@@ -41,8 +41,10 @@ class Traverser:
         if from_node is None:
             from_node = self.start_node
             self.history.append(from_node)
+        # "process" loop
         for node in from_node.children:
             self.history.append(node)
+        # "spawn walkers" loop
         for node in from_node.children:
             self.walk(node)
         if from_node == self.start_node:
