@@ -46,12 +46,12 @@ class Traverser:
         for node in from_node.children:
             self.walk(node)
         if from_node == self.start_node:
-           print(f'Traversal complete.')
+           print(f'BFS traversal complete.')
            self.print_history()
 
     def print_history(self):
-        for element in self.history:
-            print(f'{element.node_id}')
+        output: list = [x.node_id for x in self.history]
+        print(f'Path from {self.start_node.node_id}: {output}')
 
 
 if __name__ == "__main__":

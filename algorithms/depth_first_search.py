@@ -1,6 +1,3 @@
-
-
-
 """
 - perform depth first search on the below graph
 - record the order in which the nodes are visited
@@ -47,16 +44,15 @@ class Traverser:
         for node in from_node.children:
            self.walk(node)
         if from_node == self.start_node:
-           print(f'Traversal complete.')
+           print(f'DFS traversal complete.')
            self.print_history()
 
     def print_history(self):
-        for element in self.history:
-            print(f'{element.node_id}')
-
+        output: list = [x.node_id for x in self.history]
+        print(f'Path from {self.start_node.node_id}: {output}')
 
 if __name__ == "__main__":
     bfs_traverser = Traverser(parent_node)
-    bfs_traverser.walk(bfs_traverser.start_node)
+    bfs_traverser.walk()
     traversed_ids = [x.node_id for x in bfs_traverser.history]
     assert traversed_ids == [0, 7, 2, 4, 5, 1, 3, 6] # depth first order

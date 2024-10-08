@@ -1,4 +1,7 @@
 class Node:
+    """
+    Node in a tree graph with an arbitrary number of children
+    """
     node_id: int
     children: list
     def __init__(self, node_id, children=None):
