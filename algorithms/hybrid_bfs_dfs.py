@@ -74,10 +74,6 @@ parent_node_2.children = [
 
 # traverse the graph using breadth first search
 
-# FIXME: this doesn't actually implement BFS.
-# Visitor pattern may still be possible, but the visitor may be more complex.
-# Also, using this kind of traverser, which minimizes travel within the graph,
-# may not be appropriate for BFS. The BFS algorithm allows us to jump around.
 class Traverser:
     start_node: Node
     history: list[Node]
