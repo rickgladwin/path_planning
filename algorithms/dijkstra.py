@@ -52,10 +52,10 @@ pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproduc
 pos = {
     "A": (1,1),
     "B": (2,2),
-    "D": (2,2),
-    "E": (2,2),
-    "F": (2,2),
-    "C": (2,2),
+    "D": (2,0),
+    "E": (4,2),
+    "F": (4,0),
+    "C": (5,1),
 }
 
 # nodes
@@ -70,8 +70,8 @@ nx.draw_networkx_edges(G, pos, width=6)
 # node labels
 nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
 # edge weight labels
-edge_labels = nx.get_edge_attributes(G, "weight")
-nx.draw_networkx_edge_labels(G, pos, edge_labels)
+all_edge_weights = nx.get_edge_attributes(G, "weight")
+nx.draw_networkx_edge_labels(G, pos, font_size=20, edge_labels=all_edge_weights)
 
 ax = plt.gca()
 ax.margins(0.08)
