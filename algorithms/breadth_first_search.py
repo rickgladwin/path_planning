@@ -79,19 +79,38 @@ parent_node_2.children = [
 # Also, using this kind of traverser, which minimizes travel within the graph,
 # may not be appropriate for BFS. The BFS algorithm allows us to jump around.
 class Traverser:
-    start_node: Node
-    history: list[Node]
+    visited: list[Node]
+    queue: list[Node]
+
     def __init__(self, start_node: Node):
-        self.start_node = start_node
-        self.history = []
+        self.visited = []
+        self.queue = []
+
+    def scan(self):
+        # start by adding the parent node to the queue.
+        # then visit it.
+        # from the perspective of the last node visited
+        # add the child nodes to the queue.
+        # then visit the queue, 1 by 1 (and move the node from queue to visited)
+        # when all nodes from the current queue (the current level) are visited,
+        # there will be more nodes in the queue from the next level down.
+        # visiting moves the current node from queue to visited
+        # visiting adds the current node's children to the queue.
+        # once the queue is empty or when a goal is reached, exit
+        # and report the visited list and the goal result, if applicable.
+
+        # NOTE: should still be able to do this with a recursive function plus a loop,
+        # given the pseudocode above. Just need to modify the actions and add that
+        # second queue.
+
 
     def walk(self, from_node=None):
         if from_node is None:
             from_node = self.start_node
-            self.history.append(from_node)
+            self.visited.append(from_node)
         # "process" loop
         for node in from_node.children:
-            self.history.append(node)
+            self.visited.append(node)
         # "spawn walkers" loop
         for node in from_node.children:
             self.walk(node)
@@ -100,17 +119,17 @@ class Traverser:
            self.print_history()
 
     def print_history(self):
-        output: list = [x.node_id for x in self.history]
+        output: list = [x.node_id for x in self.visited]
         print(f'Path from {self.start_node.node_id}: {output}')
 
 
 if __name__ == "__main__":
     bfs_traverser = Traverser(parent_node)
     bfs_traverser.walk()
-    traversed_ids = [x.node_id for x in bfs_traverser.history]
+    traversed_ids = [x.node_id for x in bfs_traverser.visited]
     assert traversed_ids == [0, 7, 5, 3, 2, 4, 1, 6] # breadth first order
 
     bfs_traverser_2 = Traverser(parent_node_2)
     bfs_traverser_2.walk()
-    traversed_ids = [x.node_id for x in bfs_traverser_2.history]
+    traversed_ids = [x.node_id for x in bfs_traverser_2.visited]
     assert traversed_ids == ["A", "B", "C", "D", "E", "F", "N", "G", "H", "I", "J", "K"] # breadth first order
