@@ -84,11 +84,12 @@ class Traverser:
 
     def __init__(self, start_node: Node):
         self.visited = []
-        self.queue = []
+        self.queue = [start_node]
 
-    def scan(self):
+    def visit(self):
         # start by adding the parent node to the queue.
-        # then visit it.
+        # then visit it. (done in constructor) ✓
+    
         # from the perspective of the last node visited
         # add the child nodes to the queue.
         # then visit the queue, 1 by 1 (and move the node from queue to visited)
