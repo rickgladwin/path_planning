@@ -35,6 +35,7 @@ version 2 (from https://www.youtube.com/watch?v=-yF6k_bV_JQ):
 
 (see https://monosketch.io/ for ASCII drawing tool)
 """
+
 from graphs.node import Node
 
 # build a graph of Nodes
@@ -74,25 +75,39 @@ parent_node_2.children = [
 
 # traverse the graph using breadth first search
 
-# FIXME: this doesn't actually implement BFS.
-# Visitor pattern may still be possible, but the visitor may be more complex.
-# Also, using this kind of traverser, which minimizes travel within the graph,
-# may not be appropriate for BFS. The BFS algorithm allows us to jump around.
 class Traverser:
     visited: list[Node]
     queue: list[Node]
+    goal_met: bool
 
     def __init__(self, start_node: Node):
         self.visited = []
-        self.queue = [start_node]
+        self.queue = []
+        self.goal_met = False
+        self.visit(start_node)
 
-    def visit(self):
+    def visit(self, current_node: Node):
         # start by adding the parent node to the queue.
         # then visit it. (done in constructor) ✓
-    
+        self.visited.append(current_node)
+
         # from the perspective of the last node visited
         # add the child nodes to the queue.
+        self.queue.extend(current_node.children)
+
+        # TODO: evaluate a goal or goals here.
+
         # then visit the queue, 1 by 1 (and move the node from queue to visited)
+        # if len(self.queue) != 0 and not self.goal_met:
+        if len(self.queue) != 0:
+            self.print_queue()
+            self.visit(self.queue.pop(0))
+        else:
+            # print(f'BFS Traversal complete. Goal met: {self.goal_met}')
+            print(f'BFS Traversal complete.')
+        # print(f'Visited: {self.visited}')
+        # self.print_history()
+
         # when all nodes from the current queue (the current level) are visited,
         # there will be more nodes in the queue from the next level down.
         # visiting moves the current node from queue to visited
@@ -105,32 +120,37 @@ class Traverser:
         # second queue.
 
 
-    def walk(self, from_node=None):
-        if from_node is None:
-            from_node = self.start_node
-            self.visited.append(from_node)
-        # "process" loop
-        for node in from_node.children:
-            self.visited.append(node)
-        # "spawn walkers" loop
-        for node in from_node.children:
-            self.walk(node)
-        if from_node == self.start_node:
-           print(f'BFS traversal complete.')
-           self.print_history()
+    # def walk(self, from_node=None):
+    #     if from_node is None:
+    #         from_node = self.start_node
+    #         self.visited.append(from_node)
+    #     # "process" loop
+    #     for node in from_node.children:
+    #         self.visited.append(node)
+    #     # "spawn walkers" loop
+    #     for node in from_node.children:
+    #         self.walk(node)
+    #     if from_node == self.start_node:
+    #        print(f'BFS traversal complete.')
+    #        self.print_history()
 
     def print_history(self):
         output: list = [x.node_id for x in self.visited]
-        print(f'Path from {self.start_node.node_id}: {output}')
+        print(f'Path from parent_node: {output}')
+
+    def print_queue(self):
+        output: list = [x.node_id for x in self.queue]
+        print(f'current queue: {output}')
 
 
 if __name__ == "__main__":
     bfs_traverser = Traverser(parent_node)
-    bfs_traverser.walk()
+    # bfs_traverser.visit()
+    bfs_traverser.print_history()
     traversed_ids = [x.node_id for x in bfs_traverser.visited]
     assert traversed_ids == [0, 7, 5, 3, 2, 4, 1, 6] # breadth first order
 
     bfs_traverser_2 = Traverser(parent_node_2)
-    bfs_traverser_2.walk()
+    # bfs_traverser_2.walk()
     traversed_ids = [x.node_id for x in bfs_traverser_2.visited]
     assert traversed_ids == ["A", "B", "C", "D", "E", "F", "N", "G", "H", "I", "J", "K"] # breadth first order

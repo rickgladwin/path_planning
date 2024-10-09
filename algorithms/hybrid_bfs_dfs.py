@@ -72,7 +72,7 @@ parent_node_2.children = [
     ])
 ]
 
-# traverse the graph using breadth first search
+# traverse the graph using hybrid BFS/DFS
 
 class Traverser:
     start_node: Node
@@ -92,7 +92,7 @@ class Traverser:
         for node in from_node.children:
             self.walk(node)
         if from_node == self.start_node:
-           print(f'BFS traversal complete.')
+           print(f'Hybrid traversal complete.')
            self.print_history()
 
     def print_history(self):
@@ -109,4 +109,5 @@ if __name__ == "__main__":
     bfs_traverser_2 = Traverser(parent_node_2)
     bfs_traverser_2.walk()
     traversed_ids = [x.node_id for x in bfs_traverser_2.history]
+    # NOTE: this assertion will fail. This module does not implement BFS.
     assert traversed_ids == ["A", "B", "C", "D", "E", "F", "N", "G", "H", "I", "J", "K"] # breadth first order
