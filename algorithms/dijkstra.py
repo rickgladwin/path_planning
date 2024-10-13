@@ -35,47 +35,65 @@ G.add_weighted_edges_from([
     ("E", "F", 1),
 ])
 
-# draw the weighted graph
-# See https://networkx.org/documentation/latest/auto_examples/drawing/plot_weighted_graph.html
+def draw_graph():
+    # draw the weighted graph
+    # See https://networkx.org/documentation/latest/auto_examples/drawing/plot_weighted_graph.html
 
-# nx.draw(G, with_labels=True, font_weight="bold")
-# nx.draw_networkx(G, with_labels=True, font_weight="bold")
-# nx.draw_networkx_edge_labels(G, pos=nx.spring_layout(G))
+    # nx.draw(G, with_labels=True, font_weight="bold")
+    # nx.draw_networkx(G, with_labels=True, font_weight="bold")
+    # nx.draw_networkx_edge_labels(G, pos=nx.spring_layout(G))
 
-# G = nx.petersen_graph()
-# subax1 = plt.subplot(121)
-# nx.draw(G, with_labels=True, font_weight='bold')
-# subax2 = plt.subplot(122)
-# nx.draw_shell(G, nlist=[range(5, 10), range(5)], with_labels=True, font_weight='bold')
-pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
-# pos = nx.circular_layout(G)
-pos = {
-    "A": (1,1),
-    "B": (2,2),
-    "D": (2,0),
-    "E": (4,2),
-    "F": (4,0),
-    "C": (5,1),
-}
+    # G = nx.petersen_graph()
+    # subax1 = plt.subplot(121)
+    # nx.draw(G, with_labels=True, font_weight='bold')
+    # subax2 = plt.subplot(122)
+    # nx.draw_shell(G, nlist=[range(5, 10), range(5)], with_labels=True, font_weight='bold')
+    pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
+    # pos = nx.circular_layout(G)
+    pos = {
+        "A": (1,1),
+        "B": (2,2),
+        "D": (2,0),
+        "E": (4,2),
+        "F": (4,0),
+        "C": (5,1),
+    }
 
-# nodes
-nx.draw_networkx_nodes(G, pos, node_size=700)
+    # nodes
+    nx.draw_networkx_nodes(G, pos, node_size=700)
 
-# edges
-nx.draw_networkx_edges(G, pos, width=6)
-# nx.draw_networkx_edges(
-#     G, pos, width=6, alpha=0.5, edge_color="b", style="dashed"
-# )
+    # edges
+    nx.draw_networkx_edges(G, pos, width=6)
+    # nx.draw_networkx_edges(
+    #     G, pos, width=6, alpha=0.5, edge_color="b", style="dashed"
+    # )
 
-# node labels
-nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
-# edge weight labels
-all_edge_weights = nx.get_edge_attributes(G, "weight")
-nx.draw_networkx_edge_labels(G, pos, font_size=20, edge_labels=all_edge_weights)
+    # node labels
+    nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
+    # edge weight labels
+    all_edge_weights = nx.get_edge_attributes(G, "weight")
+    nx.draw_networkx_edge_labels(G, pos, font_size=20, edge_labels=all_edge_weights)
 
-ax = plt.gca()
-ax.margins(0.08)
-plt.axis("off")
-plt.tight_layout()
+    ax = plt.gca()
+    ax.margins(0.08)
+    plt.axis("off")
+    plt.tight_layout()
 
-plt.show()
+    plt.show()
+
+print(f'nodes: {G.nodes}')
+
+class Traverser:
+    node_table: list[dict]
+
+    def __init__(self, graph: Graph):
+        #populate the node table using the graph
+        for node in graph.nodes:
+            self.node_table.append(
+                {"node_id": node, "shortest_distance": float('inf'), "previous_node": None}
+            )
+        print(f'{self.node_table=}')
+
+    # TODO: build the evaluation and updating functions
+
+

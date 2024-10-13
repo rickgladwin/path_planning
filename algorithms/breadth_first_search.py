@@ -80,11 +80,10 @@ class Traverser:
     queue: list[Node]
     goal_met: bool
 
-    def __init__(self, start_node: Node):
+    def __init__(self):
         self.visited = []
         self.queue = []
         self.goal_met = False
-        self.visit(start_node)
 
     def visit(self, current_node: Node):
         self.visited.append(current_node)
@@ -110,12 +109,14 @@ class Traverser:
 
 
 if __name__ == "__main__":
-    bfs_traverser = Traverser(parent_node)
+    bfs_traverser = Traverser()
+    bfs_traverser.visit(parent_node)
     bfs_traverser.print_history()
     traversed_ids = [x.node_id for x in bfs_traverser.visited]
     assert traversed_ids == [0, 7, 5, 3, 2, 4, 1, 6] # breadth first order
 
-    bfs_traverser_2 = Traverser(parent_node_2)
+    bfs_traverser_2 = Traverser()
+    bfs_traverser_2.visit(parent_node_2)
     bfs_traverser_2.print_history()
     traversed_ids = [x.node_id for x in bfs_traverser_2.visited]
     assert traversed_ids == ["A", "B", "C", "D", "E", "F", "N", "G", "H", "I", "J", "K"] # breadth first order
