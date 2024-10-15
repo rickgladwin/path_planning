@@ -19,13 +19,12 @@ https://monosketch.io/
 # in classes that are the type of the class itself)
 from __future__ import annotations
 
-import typing
-from typing import TypeVar, Hashable, TypeAlias
+from typing import Hashable
 
+import matplotlib.pyplot as plt
 import networkx as nx
 from networkx.classes import Graph
 from networkx.classes.reportviews import EdgeDataView
-import matplotlib.pyplot as plt
 
 # build the graph
 G: Graph = nx.Graph()
@@ -42,23 +41,11 @@ G.add_weighted_edges_from([
     ("E", "F", 1),
 ])
 
-print(f"{G.edges(data=True)=}")
-
 def draw_graph():
     # draw the weighted graph
     # See https://networkx.org/documentation/latest/auto_examples/drawing/plot_weighted_graph.html
 
-    # nx.draw(G, with_labels=True, font_weight="bold")
-    # nx.draw_networkx(G, with_labels=True, font_weight="bold")
-    # nx.draw_networkx_edge_labels(G, pos=nx.spring_layout(G))
-
-    # G = nx.petersen_graph()
-    # subax1 = plt.subplot(121)
-    # nx.draw(G, with_labels=True, font_weight='bold')
-    # subax2 = plt.subplot(122)
-    # nx.draw_shell(G, nlist=[range(5, 10), range(5)], with_labels=True, font_weight='bold')
-    pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
-    # pos = nx.circular_layout(G)
+    # pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
     pos = {
         "A": (1,1),
         "B": (2,2),
@@ -73,12 +60,10 @@ def draw_graph():
 
     # edges
     nx.draw_networkx_edges(G, pos, width=6)
-    # nx.draw_networkx_edges(
-    #     G, pos, width=6, alpha=0.5, edge_color="b", style="dashed"
-    # )
 
     # node labels
     nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
+
     # edge weight labels
     all_edge_weights = nx.get_edge_attributes(G, "weight")
     nx.draw_networkx_edge_labels(G, pos, font_size=20, edge_labels=all_edge_weights)
@@ -87,49 +72,15 @@ def draw_graph():
     ax.margins(0.08)
     plt.axis("off")
     plt.tight_layout()
-
     plt.show()
-
-# print(f'{G=}')
-# print(f'{G.nodes=}')
-# print(f'{G.nodes["A"]=}')
-# print(f"{G.adjacency}")
-# graph_adjacency = G.adjacency()
-# for element in graph_adjacency:
-#     print(f'adjacency element: {element}')
-# print(f'{G.adjacency()=}')
-test_edges = G.adj['A']
-print(f"{test_edges.keys()=}")
-print(f"{test_edges.values()=}")
-print(f"{test_edges.items()=}")
-print(f"{G.adj['A']=}")
-print(f"{G.edges('A', data=True)=}")
-edge_data = G.edges('A', data=True)
-for _, child_id, weight_data in edge_data:
-    print(f"child_id: {child_id}, weight: {weight_data['weight']}")
-for element in G.adj['A'].items():
-    print(f"from dict: {element=}")
-    print(f"state_id: {element[0]}")
-    print(f"weight: {element[1]['weight']}")
-for _, child_id, weight_data in G.edges('A', data=True):
-    print(f"from edges: {child_id=}, weight: {weight_data['weight']}")
-# TODO: find the method to get the nodes and weights from G.adj (or similar object)
-# types
-
-# Node = TypeAlias("Node", bound=Hashable)
 
 
 class StateNode:
     """
     A Node in the underlying state data from the problem.
-    NOTE: If the underlying problem is based on graph or tree traversal, as is the case with
-    Dijkstra's algorithm, then a data structure like a StateNode makes sense, but it isn't
-    a necessary component in every search problem. So long as there is some representation
-    of each state in the problem definition, our needs are met, whether that takes the form
-    of nodes and edges, a description of a state and available actions and costs for reaching
-    other states, etc. We expect that, for any problem for which we can draw a state diagram,
-    there will be equivalency between the graph of StateNodes and the graph of SearchNodes,
-    but the properties on the nodes and the configuration of the edges may differ.
+    For any problem for which we can draw a state diagram, there will be equivalency
+    between the graph of StateNodes and the graph of SearchNodes, but the properties
+    on the nodes and the configuration of the edges may differ.
 
     In this example, StateNodes will correspond directly to the nodes in the networkx graph for
     the problem.
@@ -137,7 +88,6 @@ class StateNode:
     state: Hashable
     # edges type is a concretion of Graph.adj[_Node] type dict[Hashable | Any, dict[str, Any]]
     # that lets us use string node identifiers and { 'weight': int } dictionary entries for edge properties
-    # edges: dict[Hashable, dict[str, int]]
     edges: EdgeDataView
 
     def __init__(self, state, edges):
@@ -221,6 +171,7 @@ class Frontier:
             output += f"{node.state.state}, cost: {node.path_cost}\n"
         return output
 
+
 class Traverser:
     # NOTE: in the visitor pattern, the original data is kept minimal
     #  and immutable (immutable by the visitor anyway), and an internal
@@ -240,7 +191,8 @@ class Traverser:
         # NOTE: for Dijkstra's algorithm, the Graph (including weighted edges), start_node,
         #  and goal_node comprise the problem, alongside the assumption that every action
         #  involves traversing from one node to an adjacent node, and the action cost is
-        #  the weight of the edge.
+        #  the weight of the edge, and that the optimal solution involves the path with
+        #  lowest cost.
         self.graph = graph
         self.start_node = SearchNode(StateNode(start_node_id, graph.edges(start_node_id, data=True)), None, 0)
         self.goal_node = SearchNode(StateNode(goal_node_id, graph.edges(goal_node_id, data=True)), None, float('inf'))
@@ -248,7 +200,6 @@ class Traverser:
         self.frontier.add(self.start_node)
         self.reached = {self.start_node.state.state: self.start_node}
 
-    # TODO: build the evaluation and updating functions
     def solve(self) -> None:
         while not self.frontier.is_empty():
             # visit phase
@@ -263,41 +214,13 @@ class Traverser:
                     self.frontier.add(child_node)
         self.finish(False, None)
 
-        # on visiting a node:
-        #  - update the node's info in node_info
-        #  - test the node against the goal
-        #  - for each adjacent node:
-        #    - if adjacent node not in frontier or expanded:
-        #      - generate adjacent node
-        #  - add the node to expanded
-        #  - for each node on the frontier, in order of lowest cost,
-        #    - pop the node off the frontier
-        #    - visit the node
-        # self.node_info[node]["previous_node"] = visit_from
-        # if node == self.goal_node:
-        #     self.finish(True, self.goal_node)
-
-        # for reachable in self.graph.nodes:
-            # if reachable not in self.expanded:
-        # self.expanded.append(node)
-
     def expand(self, node: SearchNode) -> set[SearchNode]:
         expanded: set = set()
-        print(f"expanding {node.state.state}...")
-        print(f"{node.state.edges=}")
         for _, child_id, edge_data in node.state.edges:
             path_cost = node.path_cost + edge_data['weight']
             child_node = SearchNode(StateNode(child_id, self.graph.edges(child_id, data=True)), node, path_cost)
             expanded.add(child_node)
         return expanded
-
-    def generate(self, node, generate_from, cost: int):
-        # update the node's info in node_info
-        # push the node to the frontier
-        current_node_info: dict = self.node_info[node]
-        current_node_info["previous_node"] = generate_from
-        current_node_info["shortest_distance"] = current_node_info["shortest_distance"] + cost
-        self.frontier.append(node)
 
     def finish(self, success: bool, last_node):
         if success:
@@ -309,7 +232,6 @@ class Traverser:
             reached_start = False
             while not reached_start:
                 solution_path.append(path_node.state.state)
-                # print(f"{path_node.parent=}")
                 if not path_node.parent:
                     reached_start = True
                 else:
@@ -321,12 +243,10 @@ class Traverser:
             print(f"reached nodes:")
             for key, value in self.reached.items():
                 print(f"{key}, cost: {value.path_cost}")
-            # print(f'last node reached: {last_node}')
-            # print(f'{self.node_info=}')
 
 
 if __name__ == "__main__":
     dijkstra_traverser = Traverser(G, "A", "C")
     dijkstra_traverser.solve()
-    # dijkstra_traverser.start_visit(G.nodes["A"], tuple(G.nodes["C"]))
+    draw_graph()
     print("done.")

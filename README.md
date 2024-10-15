@@ -12,6 +12,6 @@ U of Hull AI Foundations module, week 3: path planning algorithms
 # Build
 ## venv 
 - cd into project root
-- `virtualenv venv`
+- `virtualenv -p python3.12 venv`
 - `source venv/bin/activate`
 - `pip install -r requirements.txt`
