@@ -15,13 +15,17 @@ Use Dijkstra's algorithm to calculate the most efficient path from A to C.
 
 https://monosketch.io/
 """
+# enable late evaluation of types (allows us to use type declarations
+# in classes that are the type of the class itself)
+from __future__ import annotations
+
 import typing
 from typing import TypeVar, Hashable, TypeAlias
 
 import networkx as nx
 from networkx.classes import Graph
+from networkx.classes.reportviews import EdgeDataView
 import matplotlib.pyplot as plt
-from networkx.classes.reportviews import NodeView
 
 # build the graph
 G: Graph = nx.Graph()
@@ -37,6 +41,8 @@ G.add_weighted_edges_from([
     ("E", "C", 9),
     ("E", "F", 1),
 ])
+
+print(f"{G.edges(data=True)=}")
 
 def draw_graph():
     # draw the weighted graph
@@ -84,51 +90,179 @@ def draw_graph():
 
     plt.show()
 
-print(f'{G=}')
-print(f'{G.nodes=}')
-print(f'{G.nodes["A"]=}')
-graph_adjacency = G.adjacency()
-for element in graph_adjacency:
-    print(f'adjacency element: {element}')
-print(f'{G.adjacency()=}')
-
+# print(f'{G=}')
+# print(f'{G.nodes=}')
+# print(f'{G.nodes["A"]=}')
+# print(f"{G.adjacency}")
+# graph_adjacency = G.adjacency()
+# for element in graph_adjacency:
+#     print(f'adjacency element: {element}')
+# print(f'{G.adjacency()=}')
+test_edges = G.adj['A']
+print(f"{test_edges.keys()=}")
+print(f"{test_edges.values()=}")
+print(f"{test_edges.items()=}")
+print(f"{G.adj['A']=}")
+print(f"{G.edges('A', data=True)=}")
+edge_data = G.edges('A', data=True)
+for _, child_id, weight_data in edge_data:
+    print(f"child_id: {child_id}, weight: {weight_data['weight']}")
+for element in G.adj['A'].items():
+    print(f"from dict: {element=}")
+    print(f"state_id: {element[0]}")
+    print(f"weight: {element[1]['weight']}")
+for _, child_id, weight_data in G.edges('A', data=True):
+    print(f"from edges: {child_id=}, weight: {weight_data['weight']}")
+# TODO: find the method to get the nodes and weights from G.adj (or similar object)
 # types
 
 # Node = TypeAlias("Node", bound=Hashable)
+
+
+class StateNode:
+    """
+    A Node in the underlying state data from the problem.
+    NOTE: If the underlying problem is based on graph or tree traversal, as is the case with
+    Dijkstra's algorithm, then a data structure like a StateNode makes sense, but it isn't
+    a necessary component in every search problem. So long as there is some representation
+    of each state in the problem definition, our needs are met, whether that takes the form
+    of nodes and edges, a description of a state and available actions and costs for reaching
+    other states, etc. We expect that, for any problem for which we can draw a state diagram,
+    there will be equivalency between the graph of StateNodes and the graph of SearchNodes,
+    but the properties on the nodes and the configuration of the edges may differ.
+
+    In this example, StateNodes will correspond directly to the nodes in the networkx graph for
+    the problem.
+    """
+    state: Hashable
+    # edges type is a concretion of Graph.adj[_Node] type dict[Hashable | Any, dict[str, Any]]
+    # that lets us use string node identifiers and { 'weight': int } dictionary entries for edge properties
+    # edges: dict[Hashable, dict[str, int]]
+    edges: EdgeDataView
+
+    def __init__(self, state, edges):
+        self.state = state
+        self.edges = edges
+
+class SearchNode:
+    """
+    A Node in the search graph, generated while solving the problem.
+    Each SearchNode may correspond to each StateNode in the underlying data 1-to-1,
+    especially if the underlying problem can be formulated using a state diagram.
+    A SearchNode may have a similar relationship to the search graph as its corresponding
+    StateNode has to the data graph but with different properties (relevant to the
+    search), and the structure of the search graph may not match the state graph.
+    """
+    def __init__(self, state_node: StateNode, parent_node: SearchNode | None, path_cost: int | float):
+        self.state: StateNode = state_node
+        self.parent: SearchNode = parent_node
+        # Note: for Dijkstra's, we're letting the information about the actions belong to the
+        #  expansion function, since it's straightforward (expand from a parent node, add the
+        #  parent node's path cost to the edge cost from the parent to the current node to get
+        #  the current node's path cost)
+        # self.action = action
+        self.path_cost = path_cost
+
+
+class Frontier:
+    """
+    The Frontier class for best-first-search.
+    dijkstra.Frontier uses smallest path size for evaluation
+    and (in this example), a set (which is unordered) for storing nodes.
+    NOTE: in the networkx package, the type of a Node can be any hashable
+    type, and it's more messy than it's worth (and at the cost of polymorphism)
+    to restrict the type of the node itself in the classes in this module for
+    the *state* nodes (the nodes in the underlying data from the problem).
+    For state nodes, It's enough to declare the types of the Graphs (etc.)
+    themselves, and let the requirements from the networkx package trigger
+    warnings while using those types.
+    For *search* nodes, which may contain additional data, and which represent
+    parts of the search graph (which may not even be the same shape as the
+    underlying data graph), we can declare any type that suits us, including
+    custom types.
+    """
+    nodes: set[SearchNode]
+
+    def __init__(self):
+        self.nodes = set()
+
+    def is_empty(self):
+        return not self.nodes
+
+    def pop(self) -> SearchNode | None:
+        # return the node in the frontier with the best score based on the evaluation function
+        # and remove it from the set.
+        top_node = self.top()
+        self.nodes.remove(top_node)
+        return top_node
+
+    def top(self) -> SearchNode | None:
+        # return the node in the frontier with the best score (lowest cost, in the case of Dijkstra's
+        # algorithm) based on the evaluation function, but do not remove it from the set.
+        best_node = next(iter(self.nodes))
+        for node in self.nodes:
+            if best_node and self.evaluate(node) < best_node.path_cost:
+                best_node = node
+        return best_node
+
+    def add(self, node: SearchNode) -> None:
+        # add the node to the set (unordered, in this example)
+        self.nodes.add(node)
+        print(f"Frontier nodes: {self}")
+
+    def evaluate(self, node: SearchNode) -> int:
+        # The evaluation function f(n).
+        # return a score for the node based on the criteria defined by the problem or algorithm type
+        return node.path_cost
+
+    def __str__(self):
+        output = ""
+        for node in self.nodes:
+            output += f"{node.state.state}, cost: {node.path_cost}\n"
+        return output
 
 class Traverser:
     # NOTE: in the visitor pattern, the original data is kept minimal
     #  and immutable (immutable by the visitor anyway), and an internal
     #  representation of the data and search results is built that belongs
-    #  to the visitor.
+    #  to the visitor. The way these search-based solutions work essentially
+    #  implements the visitor pattern by default, and runs with it by constructing
+    #  a whole search graph based on the problem data.
     graph: Graph # original (immutable) graph data
-    node_info: dict # internal data about the search results
-    expanded: list  # nodes in the search graph that have been explored,
-                    # and their adjacent nodes generated and added to the frontier
-    frontier: list # nodes in the search graph that have been generated but not expanded (visited)
+    frontier: Frontier # nodes in the search graph that have been generated but not expanded (visited)
+    reached: dict[Hashable, SearchNode] # SearchNodes that have been generated or expanded, i.e. nodes in the frontier
+                              # plus nodes that have been visited
     # NOTE: (expanded nodes) ∪ (frontier nodes) == reached nodes
-    goal_node: typing.Any
+    start_node: SearchNode
+    goal_node: SearchNode
 
-    def __init__(self, graph: Graph):
-        self.goal_node = None
+    def __init__(self, graph: Graph, start_node_id: Hashable, goal_node_id: Hashable):
+        # NOTE: for Dijkstra's algorithm, the Graph (including weighted edges), start_node,
+        #  and goal_node comprise the problem, alongside the assumption that every action
+        #  involves traversing from one node to an adjacent node, and the action cost is
+        #  the weight of the edge.
         self.graph = graph
-        self.node_info = dict(dict())
-        self.expanded = []
-        self.frontier = []
-        #populate the node table using the graph
-        for node in graph.nodes:
-            self.node_info[node] = {node: {"shortest_distance": float('inf'), "previous_node": None}}
-
-        print(f'{self.node_info=}')
-
-    def start_visit(self, start_node, goal_node):
-        print(f'starting at: {start_node}')
-        self.node_info[start_node]["shortest_distance"] = 0
-        self.goal_node = goal_node
-        self.visit(start_node, None)
+        self.start_node = SearchNode(StateNode(start_node_id, graph.edges(start_node_id, data=True)), None, 0)
+        self.goal_node = SearchNode(StateNode(goal_node_id, graph.edges(goal_node_id, data=True)), None, float('inf'))
+        self.frontier = Frontier()
+        self.frontier.add(self.start_node)
+        self.reached = {self.start_node.state.state: self.start_node}
 
     # TODO: build the evaluation and updating functions
-    def visit(self, node, visit_from):
+    def solve(self) -> None:
+        while not self.frontier.is_empty():
+            # visit phase
+            current_node = self.frontier.pop()
+            if current_node.state.state == self.goal_node.state.state:
+                self.finish(True, current_node)
+                return
+            # expand phase
+            for child_node in self.expand(current_node):
+                if child_node.state.state not in self.reached.keys() or child_node.path_cost < self.reached[child_node.state.state].path_cost:
+                    self.reached[child_node.state.state] = child_node
+                    self.frontier.add(child_node)
+        self.finish(False, None)
+
         # on visiting a node:
         #  - update the node's info in node_info
         #  - test the node against the goal
@@ -140,12 +274,22 @@ class Traverser:
         #    - pop the node off the frontier
         #    - visit the node
         # self.node_info[node]["previous_node"] = visit_from
-        if node == self.goal_node:
-            self.finish(True, self.goal_node)
+        # if node == self.goal_node:
+        #     self.finish(True, self.goal_node)
 
         # for reachable in self.graph.nodes:
             # if reachable not in self.expanded:
-        self.expanded.append(node)
+        # self.expanded.append(node)
+
+    def expand(self, node: SearchNode) -> set[SearchNode]:
+        expanded: set = set()
+        print(f"expanding {node.state.state}...")
+        print(f"{node.state.edges=}")
+        for _, child_id, edge_data in node.state.edges:
+            path_cost = node.path_cost + edge_data['weight']
+            child_node = SearchNode(StateNode(child_id, self.graph.edges(child_id, data=True)), node, path_cost)
+            expanded.add(child_node)
+        return expanded
 
     def generate(self, node, generate_from, cost: int):
         # update the node's info in node_info
@@ -158,14 +302,31 @@ class Traverser:
     def finish(self, success: bool, last_node):
         if success:
             print(f'success!')
-            print(f'reached goal node: {last_node}')
-            print(f'{self.node_info=}')
+            print(f'reached goal node: {last_node.state.state}')
+            print(f"goal node cost: {last_node.path_cost}")
+            solution_path: list[Hashable] = []
+            path_node = last_node
+            reached_start = False
+            while not reached_start:
+                solution_path.append(path_node.state.state)
+                # print(f"{path_node.parent=}")
+                if not path_node.parent:
+                    reached_start = True
+                else:
+                    path_node = path_node.parent
+            solution_path.reverse()
+            print(f"path to goal: {solution_path}")
         else:
             print(f'finished without success.')
-            print(f'last node reached: {last_node}')
-            print(f'{self.node_info=}')
+            print(f"reached nodes:")
+            for key, value in self.reached.items():
+                print(f"{key}, cost: {value.path_cost}")
+            # print(f'last node reached: {last_node}')
+            # print(f'{self.node_info=}')
+
 
 if __name__ == "__main__":
-    dijkstra_traverser = Traverser(G)
-    dijkstra_traverser.start_visit(G.nodes["A"], tuple(G.nodes["C"]))
+    dijkstra_traverser = Traverser(G, "A", "C")
+    dijkstra_traverser.solve()
+    # dijkstra_traverser.start_visit(G.nodes["A"], tuple(G.nodes["C"]))
     print("done.")
