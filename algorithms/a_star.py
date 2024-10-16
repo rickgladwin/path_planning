@@ -51,115 +51,175 @@ Whether you feel you have the skills to do this or not, it is a valuable exercis
 from __future__ import annotations
 
 from typing import Hashable
-
-import matplotlib.pyplot as plt
-import networkx as nx
 from networkx.classes import Graph
-from networkx.classes.reportviews import EdgeDataView
 
-# build the graph
-G: Graph = nx.Graph()
-G.add_nodes_from("ABCDEF")
-G.add_weighted_edges_from([
-    ("A", "B", 2),
-    ("A", "D", 8),
-    ("B", "D", 5),
-    ("D", "E", 3),
-    ("B", "E", 6),
-    ("D", "F", 2),
-    ("F", "C", 3),
-    ("E", "C", 9),
-    ("E", "F", 1),
-])
 
-def draw_graph():
-    # draw the weighted graph
-    # See https://networkx.org/documentation/latest/auto_examples/drawing/plot_weighted_graph.html
+class Problem:
+    """
+    The properties and constraints on the problem, and the actions and constraints on the solution(s)
+    """
+    start_node: StateNode
+    goal_node: StateNode
+    actions: tuple
 
-    # pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
-    pos = {
-        "A": (1,1),
-        "B": (2,2),
-        "D": (2,0),
-        "E": (4,2),
-        "F": (4,0),
-        "C": (5,1),
-    }
+    def __init__(self, start_node, goal_node):
+        self.start_node = start_node
+        self.goal_node = goal_node
+        self.actions = (self.swap_up, self.swap_down, self.swap_right, self.swap_left)
 
-    # nodes
-    nx.draw_networkx_nodes(G, pos, node_size=700)
+    """
+    The actions for the problem that move from one SearchNode to another
+    are a set of swaps between the blank space and another tile.
+    
+    As these actions are intended to generate new SearchNodes and not just
+    move between known states, the functions will return StateNodes.   
+    """
+    def swap_up(self, from_state: StateNode.state_id) -> StateNode.state_id:
+        """
+        012 --> no swaps
+        345 --> swap index with -3
+        678 --> swap index with -3
+        """
+        new_state = from_state.copy()
+        blank_index = from_state.indexOf(0)
+        if blank_index <= 2:
+            raise RuntimeError("Can't swap up: blank is already in top row.")
+        swap_tile = from_state[blank_index - 3]
+        new_state[blank_index] = swap_tile
+        new_state[blank_index - 3] = 0
+        return new_state
 
-    # edges
-    nx.draw_networkx_edges(G, pos, width=6)
+    def swap_down(self, from_state: StateNode.state_id) -> StateNode.state_id:
+        """
+        012 --> swap index with +3
+        345 --> swap index with +3
+        678 --> no swaps
+        """
+        new_state = from_state.copy()
+        blank_index = from_state.indexOf(0)
+        if blank_index >= 6:
+            raise RuntimeError("Can't swap down: blank is already in bottom row.")
+        swap_tile = from_state[blank_index + 3]
+        new_state[blank_index] = swap_tile
+        new_state[blank_index + 3] = 0
+        return new_state
 
-    # node labels
-    nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
+    def swap_right(self, from_state: StateNode.state_id) -> StateNode.state_id:
+        """
+        012
+        345
+        678
+          ↑ no swaps
+        ↑↑  index + 1
+        """
+        new_state = from_state.copy()
+        blank_index = from_state.indexOf(0)
+        if blank_index in (2,5,8):
+            raise RuntimeError("Can't swap right: blank is already in right column.")
+        swap_tile = from_state[blank_index + 1]
+        new_state[blank_index] = swap_tile
+        new_state[blank_index + 1] = 0
+        return new_state
 
-    # edge weight labels
-    all_edge_weights = nx.get_edge_attributes(G, "weight")
-    nx.draw_networkx_edge_labels(G, pos, font_size=20, edge_labels=all_edge_weights)
-
-    ax = plt.gca()
-    ax.margins(0.08)
-    plt.axis("off")
-    plt.tight_layout()
-    plt.show()
+    def swap_left(self, from_state: StateNode.state_id) -> StateNode.state_id:
+        """
+        012
+        345
+        678
+        ↑   no swaps
+         ↑↑ index - 1
+        """
+        new_state = from_state.copy()
+        blank_index = from_state.index(0)
+        if blank_index in (0,3,6):
+            raise RuntimeError("Can't swap right: blank is already in left column.")
+        swap_tile = from_state[blank_index - 1]
+        new_state[blank_index] = swap_tile
+        new_state[blank_index - 1] = 0
+        return new_state
 
 
 class StateNode:
     """
     A Node in the underlying state data from the problem.
     """
-    state: Hashable
-    # edges type is a concretion of Graph.adj[_Node] type dict[Hashable | Any, dict[str, Any]]
-    # that lets us use string node identifiers and { 'weight': int } dictionary entries for edge properties
-    edges: EdgeDataView
+    # a minimal representation of the state of the puzzle board, e.g.
+    # ├─┬─┬─┤
+    # │2│8│3│
+    # ├─┼─┼─┤
+    # │1│6│4│ ==> [283164705]
+    # ├─┼─┼─┤
+    # │7│ │5│
+    # └─┴─┴─┘
+    #
+    state_id: str
 
-    def __init__(self, state, edges):
-        self.state = state
-        self.edges = edges
+    # NOTE: in this case, the actions available from each state will follow a set
+    #  of rules that will depend on the position of the blank square. So we can
+    #  assign responsibility for this information to a more singular entity,
+    #  like a Problem class, a Solver/Traverser class, or even the Frontier class, as part
+    #  of the expand() function (though this seems like a stretch – the expand() function
+    #  should expand based on what it's given, not be responsible for knowing the rules of expansion)
+
+    def __init__(self, state_id):
+        self.state_id = state_id
+
 
 class SearchNode:
     """
     A Node in the search graph, generated while solving the problem.
-    Each SearchNode may correspond to each StateNode in the underlying data 1-to-1,
-    especially if the underlying problem can be formulated using a state diagram.
-    A SearchNode may have a similar relationship to the search graph as its corresponding
-    StateNode has to the data graph but with different properties (relevant to the
-    search), and the structure of the search graph may not match the state graph.
     """
+    state: StateNode
+    parent: SearchNode
+    path_cost: int
+    actions: tuple
+
     def __init__(self, state_node: StateNode, parent_node: SearchNode | None, path_cost: int | float):
         self.state: StateNode = state_node
         self.parent: SearchNode = parent_node
-        # Note: for Dijkstra's, we're letting the information about the actions belong to the
-        #  expansion function, since it's straightforward (expand from a parent node, add the
-        #  parent node's path cost to the edge cost from the parent to the current node to get
-        #  the current node's path cost)
+        # the action that led to this SearchNode
         # self.action = action
+        # set the actions available to this SearchNode
+        self.set_actions()
         self.path_cost = path_cost
+
+    def set_actions(self) -> None:
+        """
+        Based on the state, some actions are permitted and some are excluded, depending on the
+        position of the blank space. Set the available actions for this SearchNode.
+        """
+        blank_index = self.state.state_id.index(0)
+        node_actions = list(Problem.actions)
+        if blank_index <= 2:
+            node_actions.remove(Problem.actions[0])
+        if blank_index >= 6:
+            node_actions.remove(Problem.actions[1])
+        if blank_index in (2,5,8):
+            node_actions.remove(Problem.actions[2])
+        if blank_index in (0,3,6):
+            node_actions.remove(Problem.actions[3])
+        self.actions = tuple(node_actions)
 
 
 class Frontier:
     """
     The Frontier class for best-first-search.
-    dijkstra.Frontier uses smallest path size for evaluation
-    and (in this example), a set (which is unordered) for storing nodes.
-    NOTE: in the networkx package, the type of a Node can be any hashable
-    type, and it's more messy than it's worth (and at the cost of polymorphism)
-    to restrict the type of the node itself in the classes in this module for
-    the *state* nodes (the nodes in the underlying data from the problem).
-    For state nodes, It's enough to declare the types of the Graphs (etc.)
-    themselves, and let the requirements from the networkx package trigger
-    warnings while using those types.
-    For *search* nodes, which may contain additional data, and which represent
-    parts of the search graph (which may not even be the same shape as the
-    underlying data graph), we can declare any type that suits us, including
-    custom types.
+    For A*, evaluate() uses some metric for judging the cost for a node in the frontier,
+    for example ortholinear proximity to the goal node. For an 8-puzzle, we're using
+    f(x) = g(x)+h(x)
+    where
+    g(x) = depth of node X in the search tree (equivalent to cost so far)
+    h(x) = the number of tiles not in their goal position in a given state X (equivalent to minimum cost to completion)
+    Note that we could use the sum of the distances of each time from the goal state instead of/in addition to h(x).
+    The exact evaluation function alters the algorithm, but is only used to select one node from the frontier, so it
+    only needs to be as fine-tuned as that task requires.
     """
     nodes: set[SearchNode]
+    goal_node: SearchNode
 
-    def __init__(self):
+    def __init__(self, goal_node):
         self.nodes = set()
+        self.goal_node = goal_node
 
     def is_empty(self):
         return not self.nodes
@@ -176,7 +236,7 @@ class Frontier:
         # algorithm) based on the evaluation function, but do not remove it from the set.
         best_node = next(iter(self.nodes))
         for node in self.nodes:
-            if best_node and self.evaluate(node) < best_node.path_cost:
+            if self.evaluate(node) < best_node.path_cost:
                 best_node = node
         return best_node
 
@@ -188,23 +248,31 @@ class Frontier:
     def evaluate(self, node: SearchNode) -> int:
         # The evaluation function f(n).
         # return a score for the node based on the criteria defined by the problem or algorithm type
-        return node.path_cost
+        return node.path_cost + self.nodes_out_of_goal_count(node)
+
+    def nodes_out_of_goal_count(self, node: SearchNode) -> int:
+        """
+        e.g.
+        search_node.state.state_id = [234567018]
+        goal_node.state.state_id   = [243560781]
+        count = 5 (we're not counting the blank space)
+        """
+        search_state = node.state.state_id
+        goal_state   = self.goal_node.state.state_id
+        count = 0
+        for i in range(0, len(goal_state)):
+            if goal_state[i] != 0 and goal_state[i] != search_state[i]:
+                count += 1
+        return count
 
     def __str__(self):
         output = ""
         for node in self.nodes:
-            output += f"{node.state.state}, cost: {node.path_cost}\n"
+            output += f"{node.state.state_id}, cost: {node.path_cost}\n"
         return output
 
 
 class Traverser:
-    # NOTE: in the visitor pattern, the original data is kept minimal
-    #  and immutable (immutable by the visitor anyway), and an internal
-    #  representation of the data and search results is built that belongs
-    #  to the visitor. The way these search-based solutions work essentially
-    #  implements the visitor pattern by default, and runs with it by constructing
-    #  a whole search graph based on the problem data.
-    graph: Graph # original (immutable) graph data
     frontier: Frontier # nodes in the search graph that have been generated but not expanded (visited)
     reached: dict[Hashable, SearchNode] # SearchNodes that have been generated or expanded, i.e. nodes in the frontier
     # plus nodes that have been visited
@@ -212,51 +280,48 @@ class Traverser:
     start_node: SearchNode
     goal_node: SearchNode
 
-    def __init__(self, graph: Graph, start_node_id: Hashable, goal_node_id: Hashable):
-        # NOTE: for Dijkstra's algorithm, the Graph (including weighted edges), start_node,
-        #  and goal_node comprise the problem, alongside the assumption that every action
-        #  involves traversing from one node to an adjacent node, and the action cost is
-        #  the weight of the edge, and that the optimal solution involves the path with
-        #  lowest cost.
-        self.graph = graph
-        self.start_node = SearchNode(StateNode(start_node_id, graph.edges(start_node_id, data=True)), None, 0)
-        self.goal_node = SearchNode(StateNode(goal_node_id, graph.edges(goal_node_id, data=True)), None, float('inf'))
-        self.frontier = Frontier()
+    def __init__(self, problem: Problem):
+        self.start_node = SearchNode(problem.start_node, None, 0)
+        self.goal_node = SearchNode(problem.goal_node, None, float('inf'))
+        self.frontier = Frontier(self.goal_node)
         self.frontier.add(self.start_node)
-        self.reached = {self.start_node.state.state: self.start_node}
+        self.reached = {self.start_node.state.state_id: self.start_node}
 
     def solve(self) -> None:
         while not self.frontier.is_empty():
             # visit phase
             current_node = self.frontier.pop()
-            if current_node.state.state == self.goal_node.state.state:
+            if current_node.state.state_id == self.goal_node.state.state_id:
                 self.finish(True, current_node)
                 return
             # expand phase
             for child_node in self.expand(current_node):
-                if child_node.state.state not in self.reached.keys() or child_node.path_cost < self.reached[child_node.state.state].path_cost:
-                    self.reached[child_node.state.state] = child_node
+                if child_node.state.state_id not in self.reached.keys() or child_node.path_cost < self.reached[child_node.state.state_id].path_cost:
+                    self.reached[child_node.state.state_id] = child_node
                     self.frontier.add(child_node)
         self.finish(False, None)
 
     def expand(self, node: SearchNode) -> set[SearchNode]:
         expanded: set = set()
+        # TODO: generate the new SearchNodes by applying the available
+        # actions from the current node.
         for _, child_id, edge_data in node.state.edges:
-            path_cost = node.path_cost + edge_data['weight']
+            # all steps cost 1
+            path_cost = node.path_cost + 1
             child_node = SearchNode(StateNode(child_id, self.graph.edges(child_id, data=True)), node, path_cost)
             expanded.add(child_node)
         return expanded
 
-    def finish(self, success: bool, last_node):
+    def finish(self, success: bool, last_node: SearchNode | None):
         if success:
             print(f'success!')
-            print(f'reached goal node: {last_node.state.state}')
+            print(f'reached goal node: {last_node.state.state_id}')
             print(f"goal node cost: {last_node.path_cost}")
             solution_path: list[Hashable] = []
             path_node = last_node
             reached_start = False
             while not reached_start:
-                solution_path.append(path_node.state.state)
+                solution_path.append(path_node.state.state_id)
                 if not path_node.parent:
                     reached_start = True
                 else:
@@ -271,7 +336,9 @@ class Traverser:
 
 
 if __name__ == "__main__":
-    dijkstra_traverser = Traverser(G, "A", "C")
+    start_node = StateNode("283164705")
+    goal_node = StateNode("123804765")
+    problem = Problem(start_node, goal_node)
+    dijkstra_traverser = Traverser(problem)
     dijkstra_traverser.solve()
-    draw_graph()
     print("done.")

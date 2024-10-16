@@ -151,7 +151,7 @@ class Frontier:
         # algorithm) based on the evaluation function, but do not remove it from the set.
         best_node = next(iter(self.nodes))
         for node in self.nodes:
-            if best_node and self.evaluate(node) < best_node.path_cost:
+            if self.evaluate(node) < best_node.path_cost:
                 best_node = node
         return best_node
 
