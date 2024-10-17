@@ -40,18 +40,12 @@ Whether you feel you have the skills to do this or not, it is a valuable exercis
 - it should be possible to generate a state graph for this problem
 -
 """
-# TODO: reintroduce the 'actions' and other elements from the general case described in the textbook
-# TODO: consider introducing a Problem class, as demonstrated in the text, to hold initial values, info about
-#  the state space, etc.
-# TODO: decide on some minimal state representation (e.g. a string of integers, using 0 as a blank space, similar
-#  to what was used in the Mitchie's MENACE project as a unique identifier for board states.
 
 # enable late evaluation of types (allows us to use type declarations
 # in classes that are the type of the class itself)
 from __future__ import annotations
 
 from typing import Hashable
-from networkx.classes import Graph
 
 
 class Problem:
@@ -86,7 +80,7 @@ class Problem:
             raise RuntimeError("Can't swap up: blank is already in top row.")
         swap_tile = from_state[blank_index - 3]
         new_state[blank_index] = swap_tile
-        new_state[blank_index - 3] = 0
+        new_state[blank_index - 3] = "0"
         return new_state
 
     def swap_down(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -101,7 +95,7 @@ class Problem:
             raise RuntimeError("Can't swap down: blank is already in bottom row.")
         swap_tile = from_state[blank_index + 3]
         new_state[blank_index] = swap_tile
-        new_state[blank_index + 3] = 0
+        new_state[blank_index + 3] = "0"
         return new_state
 
     def swap_right(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -118,7 +112,7 @@ class Problem:
             raise RuntimeError("Can't swap right: blank is already in right column.")
         swap_tile = from_state[blank_index + 1]
         new_state[blank_index] = swap_tile
-        new_state[blank_index + 1] = 0
+        new_state[blank_index + 1] = "0"
         return new_state
 
     def swap_left(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -135,7 +129,7 @@ class Problem:
             raise RuntimeError("Can't swap right: blank is already in left column.")
         swap_tile = from_state[blank_index - 1]
         new_state[blank_index] = swap_tile
-        new_state[blank_index - 1] = 0
+        new_state[blank_index - 1] = "0"
         return new_state
 
 
@@ -147,7 +141,7 @@ class StateNode:
     # ├─┬─┬─┤
     # │2│8│3│
     # ├─┼─┼─┤
-    # │1│6│4│ ==> [283164705]
+    # │1│6│4│ ==> "283164705"
     # ├─┼─┼─┤
     # │7│ │5│
     # └─┴─┴─┘
@@ -188,15 +182,19 @@ class SearchNode:
         Based on the state, some actions are permitted and some are excluded, depending on the
         position of the blank space. Set the available actions for this SearchNode.
         """
-        blank_index = self.state.state_id.index(0)
+        blank_index = self.state.state_id.index("0")
         node_actions = list(Problem.actions)
         if blank_index <= 2:
+            # can't swap up
             node_actions.remove(Problem.actions[0])
         if blank_index >= 6:
+            # can't swap down
             node_actions.remove(Problem.actions[1])
         if blank_index in (2,5,8):
+            # can't swap right
             node_actions.remove(Problem.actions[2])
         if blank_index in (0,3,6):
+            # can't swap left
             node_actions.remove(Problem.actions[3])
         self.actions = tuple(node_actions)
 
