@@ -9,6 +9,30 @@
   ├──┐  │  │
   2  4  1  6
 
+version 2 (from https://www.youtube.com/watch?v=-yF6k_bV_JQ):
+
+                             ┌───┐
+                             │ A │
+                             └┬┬┬┘
+                              │││
+          ┌───────────────────┘│└─────────────┐
+          │                    │              │
+        ┌─┴─┐                ┌─┴─┐          ┌─┴─┐
+        │ B │                │ C │          │ D │
+        └┬─┬┘                └─┬─┘          └┬─┬┘
+         │ │                   │             │ │
+  ┌──────┘ └─────┐        ┌────┘       ┌─────┘ └─────┐
+┌─┴─┐          ┌─┴─┐    ┌─┴─┐        ┌─┴─┐         ┌─┴─┐
+│ E │          │ F │    │ N │        │ G │         │ H │
+└───┘          └┬─┬┘    └───┘        └──┬┘         └───┘
+                │ │                     │
+          ┌─────┘ └────┐                └─────┐
+        ┌─┴─┐        ┌─┴─┐                  ┌─┴─┐
+        │ I │        │ J │                  │ K │
+        └───┘        └───┘                  └───┘
+
+(see https://monosketch.io/ for ASCII drawing tool)
+
 (see https://monosketch.io/ for ASCII drawing tool)
 """
 from graphs.node import Node
@@ -26,6 +50,26 @@ parent_node.children = [
     Node(3, [
         Node(6)
     ]),
+]
+
+parent_node_2 = Node("A", [])
+parent_node_2.children = [
+    Node("B", [
+        Node("E"),
+        Node("F", [
+            Node("I"),
+            Node("J")
+        ])
+    ]),
+    Node("C", [
+        Node("N")
+    ]),
+    Node("D", [
+        Node("G", [
+            Node("K")
+        ]),
+        Node("H")
+    ])
 ]
 
 # traverse the graph using depth first search
@@ -52,7 +96,15 @@ class Traverser:
         print(f'Path from {self.start_node.node_id}: {output}')
 
 if __name__ == "__main__":
-    bfs_traverser = Traverser(parent_node)
-    bfs_traverser.walk()
-    traversed_ids = [x.node_id for x in bfs_traverser.history]
+    dfs_traverser = Traverser(parent_node)
+    dfs_traverser.walk()
+    traversed_ids = [x.node_id for x in dfs_traverser.history]
     assert traversed_ids == [0, 7, 2, 4, 5, 1, 3, 6] # depth first order
+
+    dfs_traverser = Traverser(parent_node_2)
+    dfs_traverser.walk()
+    traversed_ids = [x.node_id for x in dfs_traverser.history]
+    # TODO: confirm that this is the expected behaviour
+    #  Should the deepest node in the tree be explored first, or just the deepest in the current branch?
+    #  If the algorithm is rewritten with a frontier, is that proper DFS?
+    assert traversed_ids == ['A', 'B', 'E', 'F', 'I', 'J', 'C', 'N', 'D', 'G', 'K', 'H'] # depth first order

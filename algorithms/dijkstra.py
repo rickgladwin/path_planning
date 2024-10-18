@@ -158,7 +158,7 @@ class Frontier:
     def add(self, node: SearchNode) -> None:
         # add the node to the set (unordered, in this example)
         self.nodes.add(node)
-        print(f"Frontier nodes: {self}")
+        print(f"Frontier nodes:\n{self}")
 
     def evaluate(self, node: SearchNode) -> int:
         # The evaluation function f(n).
