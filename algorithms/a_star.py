@@ -36,9 +36,10 @@ Whether you feel you have the skills to do this or not, it is a valuable exercis
 
 ----
 
-- branching factor will be minimum 2, maximum 4 for any given state, depending on the location of the blank space
-- it should be possible to generate a state graph for this problem
--
+- branching factor will be minimum 2, maximum 4 for any given state, depending on the location of the blank space.
+- it should be possible to generate a state graph for this problem by applying the valid actions
+  to any state on the frontier.
+
 """
 
 # enable late evaluation of types (allows us to use type declarations
@@ -66,7 +67,8 @@ class Problem:
     are a set of swaps between the blank space and another tile.
     
     As these actions are intended to generate new SearchNodes and not just
-    move between known states, the functions will return StateNodes.   
+    move between known states, the functions will return StateNodes, which
+    we will then use to generate new SearchNodes.
     """
     def swap_up(self, from_state: StateNode.state_id) -> StateNode.state_id:
         """
@@ -82,14 +84,11 @@ class Problem:
 
         swap_index = blank_index - 3
         swap_tile = from_state[swap_index]
-
         new_state = str_replace_char_at(new_state, blank_index, swap_tile)
         new_state = str_replace_char_at(new_state, swap_index, "0")
 
-        # new_state[blank_index] = swap_tile
-        # new_state[blank_index - 3] = "0"
-
         return new_state
+
 
     def swap_down(self, from_state: StateNode.state_id) -> StateNode.state_id:
         """
@@ -99,16 +98,17 @@ class Problem:
         """
         new_state = from_state
         blank_index = from_state.index("0")
+
         if blank_index >= 6:
             raise RuntimeError("Can't swap down: blank is already in bottom row.")
+
         swap_index = blank_index + 3
         swap_tile = from_state[swap_index]
-
         new_state = str_replace_char_at(new_state, blank_index, swap_tile)
         new_state = str_replace_char_at(new_state, swap_index, "0")
-        # new_state[blank_index] = swap_tile
-        # new_state[swap_index] = "0"
+
         return new_state
+
 
     def swap_right(self, from_state: StateNode.state_id) -> StateNode.state_id:
         """
@@ -120,19 +120,17 @@ class Problem:
         """
         new_state = from_state
         blank_index = from_state.index("0")
+
         if blank_index in (2,5,8):
             raise RuntimeError("Can't swap right: blank is already in right column.")
 
         swap_index = blank_index + 1
         swap_tile = from_state[swap_index]
-
         new_state = str_replace_char_at(new_state, blank_index, swap_tile)
         new_state = str_replace_char_at(new_state, swap_index, "0")
 
-        # swap_tile = from_state[blank_index + 1]
-        # new_state[blank_index] = swap_tile
-        # new_state[blank_index + 1] = "0"
         return new_state
+
 
     def swap_left(self, from_state: StateNode.state_id) -> StateNode.state_id:
         """
@@ -144,18 +142,15 @@ class Problem:
         """
         new_state = from_state
         blank_index = from_state.index("0")
+
         if blank_index in (0,3,6):
             raise RuntimeError("Can't swap right: blank is already in left column.")
 
         swap_index = blank_index - 1
         swap_tile = from_state[swap_index]
-
         new_state = str_replace_char_at(new_state, blank_index, swap_tile)
         new_state = str_replace_char_at(new_state, swap_index, "0")
 
-        # swap_tile = from_state[blank_index - 1]
-        # new_state[blank_index] = swap_tile
-        # new_state[blank_index - 1] = "0"
         return new_state
 
 
@@ -189,6 +184,11 @@ class StateNode:
     #  of the expand() function (though this seems like a stretch – the expand() function
     #  should expand based on what it's given, not be responsible for knowing the rules of expansion)
 
+    # NOTE: the fact that this class consists of a single property and a generic constructor
+    #  is a code smell, but it's a result of trying to build these search solvers in the most
+    #  general way possible, ideally being able to refactor the general structure in a simple way
+    #  in order to adapt the template to different algorithms and problem types.
+
     def __init__(self, state_id):
         self.state_id = state_id
 
@@ -210,6 +210,9 @@ class SearchNode:
         # the action that led to this SearchNode
         # self.action = action
         # set the actions available to this SearchNode
+        # NOTE: setting the actions functions as properties on the SearchNodes is sensible so long as
+        #  a) memory isn't at risk of being used up and
+        #  b) the functions are passed by reference and stored as pointers until they're actually used
         self.set_actions()
         self.path_cost = path_cost
 
@@ -244,7 +247,7 @@ class Frontier:
     where
     g(x) = depth of node X in the search tree (equivalent to cost so far)
     h(x) = the number of tiles not in their goal position in a given state X (equivalent to minimum cost to completion)
-    Note that we could use the sum of the distances of each time from the goal state instead of/in addition to h(x).
+    Note that we could use the sum of the distances of each tile from the goal state instead of/in addition to h(x).
     The exact evaluation function alters the algorithm, but is only used to select one node from the frontier, so it
     only needs to be as fine-tuned as that task requires.
     """
@@ -266,8 +269,10 @@ class Frontier:
         return top_node
 
     def top(self) -> SearchNode | None:
-        # return the node in the frontier with the best score (lowest cost, in the case of Dijkstra's
-        # algorithm) based on the evaluation function, but do not remove it from the set.
+        # return the node in the frontier with the best score (lowest cost, typically)
+        # based on the evaluation function, but do not remove it from the set.
+        if not self.nodes:
+            return None
         best_node = next(iter(self.nodes))
         for node in self.nodes:
             if self.evaluate(node) < best_node.path_cost:
@@ -277,7 +282,7 @@ class Frontier:
     def add(self, node: SearchNode) -> None:
         # add the node to the set (unordered, in this example)
         self.nodes.add(node)
-        print(f"Frontier nodes: {self}")
+        # print(f"Frontier nodes: {self}")
 
     def evaluate(self, node: SearchNode) -> int:
         # The evaluation function f(n).
@@ -286,7 +291,7 @@ class Frontier:
 
     def nodes_out_of_goal_count(self, node: SearchNode) -> int:
         """
-        e.g.
+        e.g.                           ↓↓  ↓ ↓↓
         search_node.state.state_id = [234567018]
         goal_node.state.state_id   = [243560781]
         count = 5 (we're not counting the blank space)
@@ -306,11 +311,11 @@ class Frontier:
         return output
 
 
-class Traverser:
+class Solver:
     problem: Problem
     frontier: Frontier # nodes in the search graph that have been generated but not expanded (visited)
-    reached: dict[Hashable, SearchNode] # SearchNodes that have been generated or expanded, i.e. nodes in the frontier
-    # plus nodes that have been visited
+    reached: dict[Hashable, SearchNode] # SearchNodes that have been generated or expanded,
+    # i.e. nodes in the frontier plus nodes that have been visited
     # NOTE: (expanded nodes) ∪ (frontier nodes) == reached nodes
     start_node: SearchNode
     goal_node: SearchNode
@@ -332,7 +337,8 @@ class Traverser:
                 return
             # expand phase
             for child_node in self.expand(current_node):
-                if child_node.state.state_id not in self.reached.keys() or child_node.path_cost < self.reached[child_node.state.state_id].path_cost:
+                if (child_node.state.state_id not in self.reached.keys()
+                        or child_node.path_cost < self.reached[child_node.state.state_id].path_cost):
                     self.reached[child_node.state.state_id] = child_node
                     self.frontier.add(child_node)
         self.finish(False, None)
@@ -370,9 +376,9 @@ class Traverser:
 
 
 if __name__ == "__main__":
-    start_node = StateNode("283164705")
-    goal_node = StateNode("123804765")
-    problem_1 = Problem(start_node, goal_node)
-    dijkstra_traverser = Traverser(problem_1)
-    dijkstra_traverser.solve()
+    start_node_1 = StateNode("283164705")
+    goal_node_1 = StateNode("123804765")
+    problem_1 = Problem(start_node_1, goal_node_1)
+    a_star_solver = Solver(problem_1)
+    a_star_solver.solve()
     print("done.")
