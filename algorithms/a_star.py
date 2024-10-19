@@ -74,13 +74,21 @@ class Problem:
         345 --> swap index with -3
         678 --> swap index with -3
         """
-        new_state = from_state.copy()
-        blank_index = from_state.indexOf(0)
+        new_state = from_state
+        blank_index = from_state.index("0")
+
         if blank_index <= 2:
             raise RuntimeError("Can't swap up: blank is already in top row.")
-        swap_tile = from_state[blank_index - 3]
-        new_state[blank_index] = swap_tile
-        new_state[blank_index - 3] = "0"
+
+        swap_index = blank_index - 3
+        swap_tile = from_state[swap_index]
+
+        new_state = str_replace_char_at(new_state, blank_index, swap_tile)
+        new_state = str_replace_char_at(new_state, swap_index, "0")
+
+        # new_state[blank_index] = swap_tile
+        # new_state[blank_index - 3] = "0"
+
         return new_state
 
     def swap_down(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -89,13 +97,17 @@ class Problem:
         345 --> swap index with +3
         678 --> no swaps
         """
-        new_state = from_state.copy()
-        blank_index = from_state.indexOf(0)
+        new_state = from_state
+        blank_index = from_state.index("0")
         if blank_index >= 6:
             raise RuntimeError("Can't swap down: blank is already in bottom row.")
-        swap_tile = from_state[blank_index + 3]
-        new_state[blank_index] = swap_tile
-        new_state[blank_index + 3] = "0"
+        swap_index = blank_index + 3
+        swap_tile = from_state[swap_index]
+
+        new_state = str_replace_char_at(new_state, blank_index, swap_tile)
+        new_state = str_replace_char_at(new_state, swap_index, "0")
+        # new_state[blank_index] = swap_tile
+        # new_state[swap_index] = "0"
         return new_state
 
     def swap_right(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -106,13 +118,20 @@ class Problem:
           ↑ no swaps
         ↑↑  index + 1
         """
-        new_state = from_state.copy()
-        blank_index = from_state.indexOf(0)
+        new_state = from_state
+        blank_index = from_state.index("0")
         if blank_index in (2,5,8):
             raise RuntimeError("Can't swap right: blank is already in right column.")
-        swap_tile = from_state[blank_index + 1]
-        new_state[blank_index] = swap_tile
-        new_state[blank_index + 1] = "0"
+
+        swap_index = blank_index + 1
+        swap_tile = from_state[swap_index]
+
+        new_state = str_replace_char_at(new_state, blank_index, swap_tile)
+        new_state = str_replace_char_at(new_state, swap_index, "0")
+
+        # swap_tile = from_state[blank_index + 1]
+        # new_state[blank_index] = swap_tile
+        # new_state[blank_index + 1] = "0"
         return new_state
 
     def swap_left(self, from_state: StateNode.state_id) -> StateNode.state_id:
@@ -123,14 +142,29 @@ class Problem:
         ↑   no swaps
          ↑↑ index - 1
         """
-        new_state = from_state.copy()
-        blank_index = from_state.index(0)
+        new_state = from_state
+        blank_index = from_state.index("0")
         if blank_index in (0,3,6):
             raise RuntimeError("Can't swap right: blank is already in left column.")
-        swap_tile = from_state[blank_index - 1]
-        new_state[blank_index] = swap_tile
-        new_state[blank_index - 1] = "0"
+
+        swap_index = blank_index - 1
+        swap_tile = from_state[swap_index]
+
+        new_state = str_replace_char_at(new_state, blank_index, swap_tile)
+        new_state = str_replace_char_at(new_state, swap_index, "0")
+
+        # swap_tile = from_state[blank_index - 1]
+        # new_state[blank_index] = swap_tile
+        # new_state[blank_index - 1] = "0"
         return new_state
+
+
+def str_replace_char_at(string: str, char_index: int, new_char: chr) -> str:
+    if char_index < 0 or char_index >= len(string):
+        raise ValueError("position must be within string length")
+
+    new_string = string[:char_index] + new_char + string[char_index + 1:]
+    return new_string
 
 
 class StateNode:
@@ -163,12 +197,14 @@ class SearchNode:
     """
     A Node in the search graph, generated while solving the problem.
     """
+    problem: Problem
     state: StateNode
     parent: SearchNode
     path_cost: int
     actions: tuple
 
-    def __init__(self, state_node: StateNode, parent_node: SearchNode | None, path_cost: int | float):
+    def __init__(self, problem: Problem, state_node: StateNode, parent_node: SearchNode | None, path_cost: int | float):
+        self.problem = problem
         self.state: StateNode = state_node
         self.parent: SearchNode = parent_node
         # the action that led to this SearchNode
@@ -183,19 +219,19 @@ class SearchNode:
         position of the blank space. Set the available actions for this SearchNode.
         """
         blank_index = self.state.state_id.index("0")
-        node_actions = list(Problem.actions)
+        node_actions = list(self.problem.actions)
         if blank_index <= 2:
             # can't swap up
-            node_actions.remove(Problem.actions[0])
+            node_actions.remove(self.problem.actions[0])
         if blank_index >= 6:
             # can't swap down
-            node_actions.remove(Problem.actions[1])
+            node_actions.remove(self.problem.actions[1])
         if blank_index in (2,5,8):
             # can't swap right
-            node_actions.remove(Problem.actions[2])
+            node_actions.remove(self.problem.actions[2])
         if blank_index in (0,3,6):
             # can't swap left
-            node_actions.remove(Problem.actions[3])
+            node_actions.remove(self.problem.actions[3])
         self.actions = tuple(node_actions)
 
 
@@ -271,6 +307,7 @@ class Frontier:
 
 
 class Traverser:
+    problem: Problem
     frontier: Frontier # nodes in the search graph that have been generated but not expanded (visited)
     reached: dict[Hashable, SearchNode] # SearchNodes that have been generated or expanded, i.e. nodes in the frontier
     # plus nodes that have been visited
@@ -279,8 +316,9 @@ class Traverser:
     goal_node: SearchNode
 
     def __init__(self, problem: Problem):
-        self.start_node = SearchNode(problem.start_node, None, 0)
-        self.goal_node = SearchNode(problem.goal_node, None, float('inf'))
+        self.problem = problem
+        self.start_node = SearchNode(self.problem, problem.start_node, None, 0)
+        self.goal_node = SearchNode(self.problem, problem.goal_node, None, float('inf'))
         self.frontier = Frontier(self.goal_node)
         self.frontier.add(self.start_node)
         self.reached = {self.start_node.state.state_id: self.start_node}
@@ -301,12 +339,10 @@ class Traverser:
 
     def expand(self, node: SearchNode) -> set[SearchNode]:
         expanded: set = set()
-        # TODO: generate the new SearchNodes by applying the available
-        # actions from the current node.
-        for _, child_id, edge_data in node.state.edges:
-            # all steps cost 1
+        for action in node.actions:
             path_cost = node.path_cost + 1
-            child_node = SearchNode(StateNode(child_id, self.graph.edges(child_id, data=True)), node, path_cost)
+            child_state_id = action(node.state.state_id)
+            child_node = SearchNode(self.problem, StateNode(child_state_id), node, path_cost)
             expanded.add(child_node)
         return expanded
 
@@ -336,7 +372,7 @@ class Traverser:
 if __name__ == "__main__":
     start_node = StateNode("283164705")
     goal_node = StateNode("123804765")
-    problem = Problem(start_node, goal_node)
-    dijkstra_traverser = Traverser(problem)
+    problem_1 = Problem(start_node, goal_node)
+    dijkstra_traverser = Traverser(problem_1)
     dijkstra_traverser.solve()
     print("done.")
