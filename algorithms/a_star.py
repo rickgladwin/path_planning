@@ -37,6 +37,11 @@ Whether you feel you have the skills to do this or not, it is a valuable exercis
 ----
 
 - branching factor will be minimum 2, maximum 4 for any given state, depending on the location of the blank space.
+  NOTE: the *effective* branching factor for an 8-puzzle, given this heuristic (number of tiles out of place)
+  is between 1 and 2 (see Stuart & Peter, chapter 3). This is because, on the way to a solution using this
+  algorithm, there will be steps with only 1 branch (as we are not revisiting reached states). So it might be
+  more accurate to say that the branching factor is between 1 and 4, and give the range of 2 to 4 dictated by
+  the number of possible actions for any given SearchNode its own name.
 - it should be possible to generate a state graph for this problem by applying the valid actions
   to any state on the frontier.
 
